@@ -198,7 +198,7 @@ class CloudflareSolver:
             self.page.wait_for_timeout(250)
 
 
-def main() -> None:
+def main(args=None) -> None:
     parser = argparse.ArgumentParser(
         description="A simple program for scraping Cloudflare clearance (cf_clearance) cookies from websites issuing Cloudflare challenges to visitors"
     )
@@ -268,7 +268,7 @@ def main() -> None:
         help="Increase the output verbosity",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     logging_level = logging.INFO if args.verbose else logging.ERROR
 
     logging.basicConfig(
