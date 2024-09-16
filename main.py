@@ -198,7 +198,7 @@ class CloudflareSolver:
             self.page.wait_for_timeout(250)
 
 
-def main(args=None) -> None:
+def main(args=None, logger=None) -> None:
     parser = argparse.ArgumentParser(
         description="A simple program for scraping Cloudflare clearance (cf_clearance) cookies from websites issuing Cloudflare challenges to visitors"
     )
@@ -269,15 +269,17 @@ def main(args=None) -> None:
     )
 
     args = parser.parse_args(args)
-    logging_level = logging.INFO if args.verbose else logging.ERROR
+    if logger is None:
+        logging_level = logging.INFO if args.verbose else logging.ERROR
 
-    logging.basicConfig(
-        format="[%(asctime)s] [%(levelname)s] %(message)s",
-        datefmt="%H:%M:%S",
-        level=logging_level,
-    )
+        logging.basicConfig(
+            format="[%(asctime)s] [%(levelname)s] %(message)s",
+            datefmt="%H:%M:%S",
+            level=logging_level,
+        )
+        logger = logging.getLogger('cl_scraper_main')
 
-    logging.info("Launching %s browser...", "headed" if args.debug else "headless")
+    logger.info("Launching %s browser...", "headed" if args.debug else "headless")
 
     challenge_messages = {
         ChallengePlatform.JAVASCRIPT: "Solving Cloudflare challenge [JavaScript]...",
@@ -293,19 +295,19 @@ def main(args=None) -> None:
         headless=not args.debug,
         proxy=args.proxy,
     ) as solver:
-        logging.info("Going to %s...", args.url)
+        logger.info("Going to %s...", args.url)
 
         try:
             solver.page.goto(args.url)
         except PlaywrightError as err:
-            logging.error(err)
+            logger.error(err)
             return
 
         clearance_cookie = solver.extract_clearance_cookie(solver.cookies)
 
         if clearance_cookie is not None:
-            logging.info("Cookie: cf_clearance=%s", clearance_cookie["value"])
-            logging.info("User agent: %s", args.user_agent)
+            logger.info("Cookie: cf_clearance=%s", clearance_cookie["value"])
+            logger.info("User agent: %s", args.user_agent)
 
             if not args.verbose:
                 print(f'cf_clearance={clearance_cookie["value"]}')
@@ -315,24 +317,24 @@ def main(args=None) -> None:
         challenge_platform = solver.detect_challenge()
 
         if challenge_platform is None:
-            logging.error("No Cloudflare challenge detected.")
+            logger.error("No Cloudflare challenge detected.")
             return
 
-        logging.info(challenge_messages[challenge_platform])
+        logger.info(challenge_messages[challenge_platform])
 
         try:
             solver.solve_challenge()
         except PlaywrightError as err:
-            logging.error(err)
+            logger.error(err)
 
         clearance_cookie = solver.extract_clearance_cookie(solver.cookies)
 
     if clearance_cookie is None:
-        logging.error("Failed to retrieve a Cloudflare clearance cookie.")
+        logger.error("Failed to retrieve a Cloudflare clearance cookie.")
         return
 
-    logging.info("Cookie: cf_clearance=%s", clearance_cookie["value"])
-    logging.info("User agent: %s", args.user_agent)
+    logger.info("Cookie: cf_clearance=%s", clearance_cookie["value"])
+    logger.info("User agent: %s", args.user_agent)
 
     if not args.verbose:
         print(f'cf_clearance={clearance_cookie["value"]}')
@@ -340,7 +342,7 @@ def main(args=None) -> None:
     if args.file is None:
         return
 
-    logging.info("Writing Cloudflare clearance cookie information to %s...", args.file)
+    logger.info("Writing Cloudflare clearance cookie information to %s...", args.file)
 
     try:
         with open(args.file, encoding="utf-8") as file:
